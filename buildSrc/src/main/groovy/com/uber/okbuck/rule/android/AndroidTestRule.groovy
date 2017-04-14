@@ -1,13 +1,12 @@
 package com.uber.okbuck.rule.android
 
 import com.uber.okbuck.core.model.base.RuleType
+import com.uber.okbuck.core.model.jvm.TestOptions
 
 final class AndroidTestRule extends AndroidRule {
 
-    /**
-     * @srcTargets , used for SqlDelight support(or other case), genrule's output will be used as src, pass empty set if not present
-     * @param appClass , if exopackage is enabled, pass the detected app class, otherwise, pass null
-     * */
+    private static final List<String> ANDROID_TEST_LABELS = ['unit', 'android', 'robolectric']
+
     AndroidTestRule(
             String name,
             List<String> visibility,
@@ -23,7 +22,7 @@ final class AndroidTestRule extends AndroidRule {
             String targetCompatibility,
             List<String> postprocessClassesCommands,
             List<String> options,
-            List<String> testRunnerJvmArgs,
+            TestOptions testOptions,
             String mResourcesDir,
             String runtimeDependency,
             Set<String> extraOpts) {
@@ -45,12 +44,12 @@ final class AndroidTestRule extends AndroidRule {
                 targetCompatibility,
                 postprocessClassesCommands,
                 options,
-                testRunnerJvmArgs,
+                testOptions,
                 false,
                 mResourcesDir,
                 runtimeDependency,
                 null,
-                ['unit', 'android', 'robolectric'],
+                ANDROID_TEST_LABELS,
                 extraOpts)
     }
 }

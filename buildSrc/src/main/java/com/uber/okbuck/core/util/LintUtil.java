@@ -37,7 +37,10 @@ public final class LintUtil {
                 .getResolvedConfiguration()
                 .getResolvedArtifacts()
                 .parallelStream()
-                .filter(LintUtil::findLint)
+                .filter(resolvedArtifact -> {
+                    ModuleVersionIdentifier identifier = resolvedArtifact.getModuleVersion().getId();
+                    return (LINT_GROUP.equals(identifier.getGroup()) && LINT_MODULE.equals(identifier.getName()));
+                })
                 .findFirst()
                 .map(r -> r.getModuleVersion().getId().getVersion())
                 .orElse(null);
@@ -70,7 +73,7 @@ public final class LintUtil {
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public static synchronized String getLintwConfigRule(Project project, File config) {
-        File configFile = new File(LINT_DEPS_CACHE + "/" + getLintwConfigName(project, config));
+        File configFile = project.getRootProject().file(LINT_DEPS_CACHE + "/" + getLintwConfigName(project, config));
         try {
             FileUtils.copyFile(config, configFile);
         } catch (IOException e) {
@@ -96,10 +99,5 @@ public final class LintUtil {
                     okBuckExtension.buckProjects);
         }
         return okBuckGradlePlugin.lintDepCache;
-    }
-
-    private static boolean findLint(ResolvedArtifact artifact) {
-        ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
-        return (LINT_GROUP.equals(identifier.getGroup()) && LINT_MODULE.equals(identifier.getName()));
     }
 }

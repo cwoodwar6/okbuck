@@ -11,8 +11,10 @@ import com.android.builder.model.SourceProvider
 import com.android.manifmerger.ManifestMerger2
 import com.android.manifmerger.MergingReport
 import com.android.utils.ILogger
+import com.uber.okbuck.OkBuckGradlePlugin
 import com.uber.okbuck.core.model.base.Scope
 import com.uber.okbuck.core.model.java.JavaLibTarget
+import com.uber.okbuck.core.model.jvm.TestOptions
 import com.uber.okbuck.core.util.FileUtil
 import groovy.util.slurpersupport.GPathResult
 import groovy.xml.StreamingMarkupBuilder
@@ -20,6 +22,8 @@ import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+
+import java.nio.file.Paths
 
 /**
  * An Android target
@@ -38,6 +42,7 @@ abstract class AndroidTarget extends JavaLibTarget {
     final int targetSdk
     final boolean debuggable
     final boolean generateR2
+    final String genDir
 
     private String manifestPath
     private String packageName
@@ -79,6 +84,11 @@ abstract class AndroidTarget extends JavaLibTarget {
             minSdk = baseVariant.mergedFlavor.minSdkVersion.apiLevel
             targetSdk = baseVariant.mergedFlavor.targetSdkVersion.apiLevel
         }
+
+        // Create gen dir
+        genDir = Paths.get(OkBuckGradlePlugin.OKBUCK_GEN, path, name).toString()
+        FileUtil.copyResourceToProject("gen/BUCK_FILE",
+                new File(rootProject.file(genDir), OkBuckGradlePlugin.BUCK))
     }
 
     protected abstract BaseVariant getBaseVariant()
@@ -141,11 +151,14 @@ abstract class AndroidTarget extends JavaLibTarget {
     }
 
     @Override
-    List<String> getTestRunnerJvmArgs() {
+    TestOptions getTestOptions() {
         Test testTask = project.tasks.withType(Test).find {
             it.name == "${VariantType.UNIT_TEST.prefix}${name.capitalize()}${VariantType.UNIT_TEST.suffix}" as String
         }
-        return testTask != null ? testTask.allJvmArgs : []
+        List<String> jvmArgs = testTask != null ? testTask.getAllJvmArgs() : Collections.<String>emptyList()
+        Map<String, Object> env = testTask != null ? testTask.getEnvironment() : Collections.emptyMap()
+        env.keySet().removeAll(System.getenv().keySet())
+        return new TestOptions(jvmArgs, env)
     }
 
     List<String> getBuildConfigFields() {
@@ -257,7 +270,7 @@ abstract class AndroidTarget extends JavaLibTarget {
             return
         }
 
-        File mergedManifest = project.file("${project.buildDir}/okbuck/${name}/AndroidManifest.xml")
+        File mergedManifest = getGenPath("AndroidManifest.xml")
         mergedManifest.parentFile.mkdirs()
         mergedManifest.createNewFile()
 
@@ -287,7 +300,7 @@ abstract class AndroidTarget extends JavaLibTarget {
                 }.join('\n'))
             }
         }
-        manifestPath = FileUtil.getRelativePath(project.projectDir, mergedManifest)
+        manifestPath = FileUtil.getRelativePath(project.rootDir, mergedManifest)
     }
 
     private void parseManifest(String originalManifest, File mergedManifest) {
@@ -391,6 +404,10 @@ abstract class AndroidTarget extends JavaLibTarget {
             expandedConfigs += expand(configNames)
         }
         return expandedConfigs
+    }
+
+    File getGenPath(String... paths) {
+        return rootProject.file(Paths.get(genDir, paths).toFile())
     }
 
     private static class EmptyLogger implements ILogger {

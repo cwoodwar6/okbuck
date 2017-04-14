@@ -1,6 +1,7 @@
 package com.uber.okbuck.rule.java
 
 import com.uber.okbuck.core.model.base.RuleType
+import com.uber.okbuck.core.model.jvm.TestOptions
 import com.uber.okbuck.rule.base.BuckRule
 
 abstract class JavaRule extends BuckRule {
@@ -13,10 +14,11 @@ abstract class JavaRule extends BuckRule {
     private final String mTargetCompatibility
     private final List<String> mPostprocessClassesCommands
     private final List<String> mOptions
-    private final List<String> mTestRunnerJvmArgs
+    private final TestOptions mTestOptions
     private final Set<String> mProvidedDeps
     private final List<String> mTestTargets
     private final List<String> mLabels
+    private final String mSourceExtension
 
     JavaRule(
             RuleType ruleType,
@@ -32,7 +34,7 @@ abstract class JavaRule extends BuckRule {
             String targetCompatibility,
             List<String> postprocessClassesCommands,
             List<String> options,
-            List<String> testRunnerJvmArgs,
+            TestOptions testOptions,
             List<String> testTargets,
             List<String> labels = null,
             Set<String> extraOpts = []) {
@@ -46,10 +48,11 @@ abstract class JavaRule extends BuckRule {
         mResourcesDir = resourcesDir
         mPostprocessClassesCommands = postprocessClassesCommands
         mOptions = options
-        mTestRunnerJvmArgs = testRunnerJvmArgs
+        mTestOptions = testOptions
         mProvidedDeps = providedDeps
         mTestTargets = testTargets
         mLabels = labels
+        mSourceExtension = ruleType.getSourceExtension();
     }
 
     @Override
@@ -57,7 +60,7 @@ abstract class JavaRule extends BuckRule {
         if (!mSrcSet.empty) {
             printer.println("\tsrcs = glob([")
             for (String src : mSrcSet) {
-                printer.println("\t\t'${src}/**/*.java',")
+                printer.println("\t\t'${src}/**/*.${mSourceExtension}',")
             }
             printer.println("\t]),")
         }
@@ -84,14 +87,14 @@ abstract class JavaRule extends BuckRule {
                 printer.println("\t\t'${processor}',")
             }
             printer.println("\t],")
+        }
 
-            if (!mAnnotationProcessorDeps.empty) {
-                printer.println("\tannotation_processor_deps = [")
-                for (String dep : mAnnotationProcessorDeps.sort()) {
-                    printer.println("\t\t'${dep}',")
-                }
-                printer.println("\t],")
+        if (!mAnnotationProcessorDeps.empty) {
+            printer.println("\tannotation_processor_deps = [")
+            for (String dep : mAnnotationProcessorDeps.sort()) {
+                printer.println("\t\t'${dep}',")
             }
+            printer.println("\t],")
         }
 
         if (!mProvidedDeps.empty) {
@@ -129,12 +132,20 @@ abstract class JavaRule extends BuckRule {
             printer.println("\t],")
         }
 
-        if (mTestRunnerJvmArgs) {
+        if (mTestOptions.jvmArgs) {
             printer.println("\tvm_args = [")
-            mTestRunnerJvmArgs.each { String arg ->
+            mTestOptions.jvmArgs.each { String arg ->
                 printer.println("\t\t'${arg}',")
             }
             printer.println("\t],")
+        }
+
+        if (mTestOptions.env) {
+            printer.println("\tenv = {")
+            mTestOptions.env.each { String key, Object value ->
+                printer.println("\t\t'${key}': '${value.toString()}',")
+            }
+            printer.println("\t},")
         }
     }
 }

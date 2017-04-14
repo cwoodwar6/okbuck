@@ -198,9 +198,11 @@ class DependencyCache {
         } else {
             def sourceJars = rootProject.fileTree(
                     dir: dependency.depFile.parentFile.parentFile.absolutePath,
-                    includes: ["**/*-sources.jar"]) as List
-            if (sourceJars.size() > 0) {
+                    includes: ["**/${sourcesJarName}"]) as List
+            if (sourceJars.size() == 1) {
                 sourcesJar = sourceJars[0]
+            } else if(sourceJars.size() > 1) {
+                throw new IllegalStateException("Found multiple source jars: ${sourceJars} for ${dependency}")
             }
         }
 

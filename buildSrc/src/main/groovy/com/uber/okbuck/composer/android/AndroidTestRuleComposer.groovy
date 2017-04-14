@@ -41,7 +41,7 @@ final class AndroidTestRuleComposer extends AndroidBuckRuleComposer {
                 ["PUBLIC"],
                 testDeps,
                 target.test.sources,
-                target.manifest,
+                fileRule(target.manifest),
                 target.testAnnotationProcessors as List,
                 testAptDeps,
                 providedDeps,
@@ -51,7 +51,7 @@ final class AndroidTestRuleComposer extends AndroidBuckRuleComposer {
                 target.targetCompatibility,
                 target.postprocessClassesCommands,
                 target.test.jvmArgs,
-                target.testRunnerJvmArgs,
+                target.testOptions,
                 target.test.resourcesDir,
                 RobolectricUtil.ROBOLECTRIC_CACHE,
                 target.getExtraOpts(RuleType.ROBOLECTRIC_TEST))

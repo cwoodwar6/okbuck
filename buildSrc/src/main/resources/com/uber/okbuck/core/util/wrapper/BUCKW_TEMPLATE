@@ -55,34 +55,11 @@ DEFAULT_BUCK_INSTALL_DIR="$HOME/.gradle/caches/okbuck/buck"
 CUSTOM_BUCK_REPO="${template-custom-buck-repo}"
 CUSTOM_REMOTE_NAME="custom"
 OKBUCK_SUCCESS="$WORKING_DIR/build/okbuck.success"
-OKBUCK_DIR=".okbuck"
+OKBUCK_DIR="$WORKING_DIR/.okbuck"
 MAX_DISPLAY_CHANGES=10
 
 ensureWatch ( ) {
     watchman watch-project $WORKING_DIR >/dev/null 2>&1
-}
-
-removeWatch ( ) {
-    watchman watch-del $WORKING_DIR >/dev/null 2>&1
-}
-
-getToClean ( ) {
-    ensureWatch
-
-    watchman --output-encoding=json --no-pretty -j 2>&1 <<-EOT
-["query", "$WORKING_DIR", {
-    "expression": ["allof",
-        ["type", "f"],
-        ["anyof",
-${template-remove}
-        ],
-        ["not", ["anyof",
-${template-keep}
-        ]]
-    ],
-    "fields": ["name"]
-}]
-EOT
 }
 
 getChanges ( ) {
@@ -95,19 +72,21 @@ getChanges ( ) {
         ["type", "f"],
         ["anyof",
 ${template-watch}
-        ]
+        ],
+${template-ignored-dirs}
     ],
     "fields": ["name"]
 }]
 EOT`
     SOURCE_ROOTS=`watchman --output-encoding=json --no-pretty -j 2>&1 <<-EOT
-["query", ".", {
+["query", "$WORKING_DIR", {
     "since": "n:okbuck_source_roots",
     "expression": ["allof",
         ["type", "d"],
         ["anyof",
 ${template-source-roots}
-        ]
+        ],
+${template-ignored-dirs}
     ],
     "fields": ["new", "exists", "name"]
 }]
@@ -123,18 +102,6 @@ updateOkBuckSuccess ( ) {
 runOkBuck ( ) {
     info "RUNNING OKBUCK..."
     echo
-
-    if [[ ! -z "$INSTALLED_WATCHMAN" ]]; then
-        TO_CLEAN=$(getToClean | jsonq '"\n".join(obj["files"])')
-        if [[ $? -eq 0 ]]; then
-            echo $TO_CLEAN | xargs rm
-            info "DELETED OLD BUCK FILES"
-            EXTRA_OKBUCK_ARGS="-xokbuckClean $EXTRA_OKBUCK_ARGS"
-        else
-            warn "WATCHMAN FAILED. USING OKBUCKCLEAN."
-            removeWatch
-        fi
-    fi
 
     rm -f $OKBUCK_SUCCESS
     ( $WORKING_DIR/gradlew -p $WORKING_DIR okbuck -Dokbuck.wrapper=true $EXTRA_OKBUCK_ARGS &&
@@ -183,7 +150,7 @@ setupBuckBinary ( ) {
             if [[ -z "$REMOTE_EXISTS" ]]; then
                 git remote add $CUSTOM_REMOTE_NAME $CUSTOM_BUCK_REPO
             fi
-            cd $WORKING_DIR
+            cd -
         fi
 
         BUCK_BINARY="$BUCK_HOME/bin/buck"

@@ -30,6 +30,7 @@ dependencies {
     compile deps.build.androidPlugin
     compile deps.build.commonsIo
     compile deps.build.commonsLang
+    compile deps.build.kotlinPlugin
     compile deps.build.mavenArtifact
 
     testCompile deps.test.junit
@@ -45,7 +46,7 @@ task sourcesJar(type: Jar) {
     classifier = 'sources'
 }
 
-def publishVersion = '0.17.3'
+def publishVersion = '0.20.3'
 group = 'com.uber'
 version = publishVersion
 def siteUrl = 'https://github.com/uber/okbuck'

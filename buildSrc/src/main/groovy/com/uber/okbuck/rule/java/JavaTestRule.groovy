@@ -1,8 +1,11 @@
 package com.uber.okbuck.rule.java
 
 import com.uber.okbuck.core.model.base.RuleType
+import com.uber.okbuck.core.model.jvm.TestOptions
 
-final class JavaTestRule extends JavaRule {
+class JavaTestRule extends JavaRule {
+
+    private static final List<String> JAVA_TEST_LABELS = ['unit', 'java']
 
     JavaTestRule(
             String name,
@@ -17,10 +20,12 @@ final class JavaTestRule extends JavaRule {
             String targetCompatibility,
             List<String> postprocessClassesCommands,
             List<String> options,
-            List<String> testRunnerJvmArgs,
-            Set<String> extraOpts) {
+            TestOptions testOptions,
+            Set<String> extraOpts,
+            RuleType ruleType = RuleType.JAVA_TEST,
+            List<String> testLabels = JAVA_TEST_LABELS) {
         super(
-                RuleType.JAVA_TEST,
+                ruleType,
                 name,
                 visibility,
                 deps,
@@ -33,9 +38,9 @@ final class JavaTestRule extends JavaRule {
                 targetCompatibility,
                 postprocessClassesCommands,
                 options,
-                testRunnerJvmArgs,
+                testOptions,
                 null,
-                ['unit', 'java'],
+                testLabels,
                 extraOpts)
     }
 }

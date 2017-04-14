@@ -8,6 +8,7 @@ import org.gradle.api.tasks.testing.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public abstract class JvmTarget extends Target {
 
@@ -19,23 +20,29 @@ public abstract class JvmTarget extends Target {
 
     /**
      * Main Scope
+     * @return main scope
      */
     public abstract Scope getMain();
 
     /**
      * Test Scope
+     * @return test scope
      */
     public abstract Scope getTest();
 
     /**
-     * List of test jvm args
+     * The test options
+     * @return The test options
      */
-    public List<String> getTestRunnerJvmArgs() {
+    public TestOptions getTestOptions() {
         try {
             Test testTask = getProject().getTasks().withType(Test.class).getByName("test");
-            return testTask != null ? testTask.getAllJvmArgs() : Collections.<String>emptyList();
+            List<String> jvmArgs = testTask != null ? testTask.getAllJvmArgs() : Collections.<String>emptyList();
+            Map<String, Object> env = testTask != null ? testTask.getEnvironment() : Collections.emptyMap();
+            env.keySet().removeAll(System.getenv().keySet());
+            return new TestOptions(jvmArgs, env);
         } catch (Exception e) {
-            return Collections.emptyList();
+            return TestOptions.EMPTY;
         }
     }
 }
