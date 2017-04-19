@@ -31,8 +31,9 @@ public final class RobolectricUtil {
         for (API api : EnumSet.allOf(API.class)) {
             Configuration runtimeApi = project.getConfigurations().maybeCreate(
                     ROBOLECTRIC_RUNTIME + "_" + api.name());
-            project.getDependencies().add(runtimeApi.getName(), api.androidJar);
-            project.getDependencies().add(runtimeApi.getName(), api.shadowsJar);
+            for (String jar : api.dependencies) {
+                project.getDependencies().add(runtimeApi.getName(), jar);
+            }
             runtimeDeps.add(runtimeApi);
         }
 
@@ -52,14 +53,36 @@ public final class RobolectricUtil {
         API_17("org.robolectric:android-all:4.2.2_r1.2-robolectric-0", "org.robolectric:shadows-core:3.0:17"),
         API_18("org.robolectric:android-all:4.3_r2-robolectric-0", "org.robolectric:shadows-core:3.0:18"),
         API_19("org.robolectric:android-all:4.4_r1-robolectric-1", "org.robolectric:shadows-core:3.0:19"),
-        API_21("org.robolectric:android-all:5.0.0_r2-robolectric-1", "org.robolectric:shadows-core:3.0:21");
+        API_21("org.robolectric:android-all:5.0.0_r2-robolectric-1", "org.robolectric:shadows-core:3.0:21"),
+        API_23("org.robolectric:android-all:6.0.1_r3-robolectric-0", "org.robolectric:shadows-core:3.3.2"),
+        API_24("org.robolectric:android-all:7.0.0_r1-robolectric-0", "org.robolectric:shadows-core:3.3.2"),
+        API_25("org.robolectric:android-all:7.1.0_r7-robolectric-0", "org.robolectric:shadows-core:3.3.2");
 
-        private final String androidJar;
-        private final String shadowsJar;
+        private final ArrayList<String> dependencies = new ArrayList<>();
+        private final String[] COMMON_DEPENDENCIES = {
+                "backport-util-concurrent:backport-util-concurrent:3.1", 
+                "classworlds:classworlds:1.1-alpha-2",
+                "nekohtml:nekohtml:1.9.6.2",
+                "org.codehaus.plexus:plexus-container-default:1.0-alpha-9-stable-1",
+                "org.codehaus.plexus:plexus-interpolation:1.11",
+                "org.codehaus.plexus:plexus-utils:1.5.15",
+                "org.apache.maven.wagon:wagon-file:1.0-beta-6",
+                "org.apache.maven.wagon:wagon-http-lightweight:1.0-beta-6",
+                "org.apache.maven.wagon:wagon-http-shared:1.0-beta-6",
+                "org.apache.maven.wagon:wagon-provider-api:1.0-beta-6",
+                "nekohtml:xercesMinimal:1.9.6.2",
+                "xmlpull:xmlpull:1.1.3.1",
+                "xpp3:xpp3_min:1.1.4c",
+                "com.thoughtworks.xstream:xstream:1.4.8"
+            };
 
-        API(String androidJar, String shadowsJar) {
-            this.androidJar = androidJar;
-            this.shadowsJar = shadowsJar;
+        API(String... deps) {
+            for (String dependency : COMMON_DEPENDENCIES) {
+                dependencies.add(dependency);
+            }
+            for (String dep : deps) {
+                dependencies.add(dep);
+            }
         }
     }
 }
