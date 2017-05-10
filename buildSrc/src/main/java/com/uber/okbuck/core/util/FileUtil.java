@@ -38,15 +38,12 @@ public final class FileUtil {
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void copyResourceToProject(String resource, File destination) {
-        try {
-            InputStream inputStream = FileUtil.class.getResourceAsStream(resource);
-            destination.getParentFile().mkdirs();
-            OutputStream outputStream = new FileOutputStream(destination);
+        destination.getParentFile().mkdirs();
+        try (InputStream inputStream = FileUtil.class.getResourceAsStream(resource);
+                OutputStream outputStream = new FileOutputStream(destination)) {
             IOUtils.copy(inputStream, outputStream);
-            IOUtils.closeQuietly(inputStream);
-            IOUtils.closeQuietly(outputStream);
         } catch (IOException e) {
-            throw new IllegalStateException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -58,7 +55,7 @@ public final class FileUtil {
         if (files == null || files.isEmpty()) {
             return Collections.emptySet();
         }
-        return files.parallelStream()
+        return files.stream()
                 .filter(f -> Objects.nonNull(f) && f.exists())
                 .map(f -> getRelativePath(project.getProjectDir(), f))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
