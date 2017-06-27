@@ -1,5 +1,8 @@
 package com.uber.okbuck.core.task;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
+
 import com.uber.okbuck.OkBuckGradlePlugin;
 import com.uber.okbuck.core.model.base.ProjectType;
 import com.uber.okbuck.core.util.FileUtil;
@@ -10,7 +13,6 @@ import com.uber.okbuck.core.util.ProjectUtil;
 import com.uber.okbuck.extension.OkBuckExtension;
 import com.uber.okbuck.generator.DotBuckConfigLocalGenerator;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Nested;
@@ -43,16 +45,14 @@ public class OkBuckTask extends DefaultTask {
     }
 
     // Fetch Kotlin support deps if needed
-    boolean hasKotlinLib = okBuckExtension.buckProjects.parallelStream().anyMatch(project -> ProjectUtil.getType(project) == ProjectType.KOTLIN_LIB);
-    Pair<String, String> kotlinDeps = null;
+    boolean hasKotlinLib = KotlinUtil.hasKotlinPluginInClasspath(getProject());
     if (hasKotlinLib) {
-      kotlinDeps = KotlinUtil.setupKotlinHome(getProject());
+      KotlinUtil.setupKotlinHome(getProject());
     }
 
     generate(okBuckExtension,
             hasGroovyLib ? GroovyUtil.GROOVY_HOME_LOCATION : null,
-            kotlinDeps != null ? kotlinDeps.getLeft(): null,
-            kotlinDeps != null ? kotlinDeps.getRight(): null);
+            hasKotlinLib ? KotlinUtil.KOTLIN_HOME_LOCATION : null);
   }
 
   @Override public String getGroup() {
@@ -78,8 +78,7 @@ public class OkBuckTask extends DefaultTask {
     return getProject().file(".buckconfig.local");
   }
 
-  private void generate(OkBuckExtension okbuckExt, String groovyHome,
-                        String kotlinCompiler, String KotlinRuntime) {
+  private void generate(OkBuckExtension okbuckExt, String groovyHome, String kotlinHome) {
     // generate empty .buckconfig if it does not exist
     if (!dotBuckConfig().exists()) {
       try {
@@ -90,7 +89,12 @@ public class OkBuckTask extends DefaultTask {
     }
 
     // Setup defs
-    FileUtil.copyResourceToProject("defs/OKBUCK_DEFS", okbuckDefs());
+    FileUtil.copyResourceToProject("defs/OKBUCK_DEFS_TEMPLATE", okbuckDefs(),
+            ImmutableMap.of("template-resource-excludes", Joiner.on(", ")
+                    .join(okBuckExtension.excludeResources
+                            .stream()
+                            .map(s -> "'" + s + "'")
+                            .collect(Collectors.toSet()))));
     Set<String> defs = okbuckExt.extraDefs.stream()
             .map(it -> "//" + FileUtil.getRelativePath(getProject().getRootDir(), it))
             .collect(Collectors.toSet());
@@ -101,8 +105,7 @@ public class OkBuckTask extends DefaultTask {
     PrintStream configPrinter = new PrintStream(dotBuckConfigLocal())) {
       DotBuckConfigLocalGenerator.generate(okbuckExt,
               groovyHome,
-              kotlinCompiler,
-              KotlinRuntime,
+              kotlinHome,
               ProguardUtil.getProguardJarPath(getProject()),
               defs).print(configPrinter);
     } catch (IOException e) {

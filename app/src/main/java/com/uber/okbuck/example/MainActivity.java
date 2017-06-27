@@ -9,23 +9,29 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
-import butterknife.BindView;
-import butterknife.ButterKnife;
-import butterknife.Unbinder;
+
+import com.github.piasy.rxscreenshotdetector.RxScreenshotDetector;
+import com.promegu.xlog.base.XLog;
 import com.uber.okbuck.example.common.Calc;
 import com.uber.okbuck.example.common.CalcMonitor;
 import com.uber.okbuck.example.common.IMyAidlInterface;
 import com.uber.okbuck.example.dummylibrary.DummyActivity;
 import com.uber.okbuck.example.dummylibrary.DummyAndroidClass;
 import com.uber.okbuck.example.javalib.DummyJavaClass;
-import com.github.piasy.rxscreenshotdetector.RxScreenshotDetector;
 import com.uber.okbuck.example.sqldelightmodel.GithubRepo;
 import com.uber.okbuck.example.sqldelightmodel.GithubUser;
-import com.promegu.xlog.base.XLog;
+import com.uber.okbuck.java.Pojo;
+import com.uber.okbuck.kotlin.KotlinDataClass;
+
 import javax.inject.Inject;
-import rx.Subscriber;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.schedulers.Schedulers;
+
+import butterknife.BindView;
+import butterknife.ButterKnife;
+import butterknife.Unbinder;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 @XLog
 public class MainActivity extends AppCompatActivity {
@@ -75,12 +81,12 @@ public class MainActivity extends AppCompatActivity {
 
         Log.d("test", "1 + 2 = " + new Calc(new CalcMonitor(this)).add(1, 2));
 
-        RxScreenshotDetector.start(getApplicationContext())
+        RxScreenshotDetector.start(this)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Subscriber<String>() {
+                .subscribe(new Observer<String>() {
                     @Override
-                    public void onCompleted() {
+                    public void onComplete() {
 
                     }
 
@@ -93,11 +99,19 @@ public class MainActivity extends AppCompatActivity {
                     public void onNext(String path) {
                         mTextView.setText(mTextView.getText() + "\nScreenshot: " + path);
                     }
+
+                    @Override
+                    public void onSubscribe(Disposable disposable) {
+
+                    }
                 });
         GithubUser user = GithubUser.create(100, "OkBuck");
         Toast.makeText(this, user.login(), Toast.LENGTH_SHORT).show();
         GithubRepo repo = GithubRepo.create(100, "OkBuck", "auto buck");
         Toast.makeText(this, repo.name() + ": " + repo.description(), Toast.LENGTH_SHORT).show();
+
+        KotlinDataClass data = new KotlinDataClass("foo", R.string.foo);
+        Pojo pojo = new Pojo();
     }
 
     @Override

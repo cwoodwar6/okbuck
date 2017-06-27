@@ -12,6 +12,7 @@ import com.android.manifmerger.ManifestMerger2
 import com.android.manifmerger.MergingReport
 import com.android.utils.ILogger
 import com.uber.okbuck.OkBuckGradlePlugin
+import com.uber.okbuck.core.model.base.RuleType
 import com.uber.okbuck.core.model.base.Scope
 import com.uber.okbuck.core.model.java.JavaLibTarget
 import com.uber.okbuck.core.model.jvm.TestOptions
@@ -22,6 +23,7 @@ import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+import org.jetbrains.kotlin.gradle.plugin.KotlinAndroidPluginWrapper
 
 import java.nio.file.Paths
 /**
@@ -42,6 +44,7 @@ abstract class AndroidTarget extends JavaLibTarget {
     final boolean debuggable
     final boolean generateR2
     final String genDir
+    final boolean isKotlin
 
     private String manifestPath
     private String packageName
@@ -88,6 +91,9 @@ abstract class AndroidTarget extends JavaLibTarget {
         genDir = Paths.get(OkBuckGradlePlugin.OKBUCK_GEN, path, name).toString()
         FileUtil.copyResourceToProject("gen/BUCK_FILE",
                 new File(rootProject.file(genDir), OkBuckGradlePlugin.BUCK))
+
+        // Check if kotlin
+        isKotlin = project.plugins.hasPlugin(KotlinAndroidPluginWrapper.class)
     }
 
     protected abstract BaseVariant getBaseVariant()
@@ -101,14 +107,10 @@ abstract class AndroidTarget extends JavaLibTarget {
 
     @Override
     Scope getMain() {
-        Set<File> srcDirs = baseVariant.sourceSets.collect { SourceProvider provider ->
-            provider.javaDirectories
-        }.flatten() as Set<File>
-
         return new Scope(
                 project,
                 expand(compileConfigs),
-                srcDirs,
+                getSources(baseVariant),
                 null,
                 getJavaCompilerOptions(baseVariant))
     }
@@ -117,9 +119,7 @@ abstract class AndroidTarget extends JavaLibTarget {
     Scope getTest() {
         Set<File> testSrcDirs = [] as Set
         if (unitTestVariant) {
-            testSrcDirs.addAll(unitTestVariant.sourceSets.collect { SourceProvider provider ->
-                provider.javaDirectories
-            }.flatten() as Set<File>)
+            testSrcDirs = getSources(unitTestVariant)
         }
 
         return new Scope(
@@ -176,11 +176,11 @@ abstract class AndroidTarget extends JavaLibTarget {
 
         Map<String, ClassField> extraBuildConfig = [:]
 
-        baseVariant.buildType.buildConfigFields.collect { String key, ClassField classField ->
+        baseVariant.mergedFlavor.buildConfigFields.collect { String key, ClassField classField ->
             extraBuildConfig.put(key, classField)
         }
 
-        baseVariant.mergedFlavor.buildConfigFields.collect { String key, ClassField classField ->
+        baseVariant.buildType.buildConfigFields.collect { String key, ClassField classField ->
             extraBuildConfig.put(key, classField)
         }
 
@@ -413,6 +413,38 @@ abstract class AndroidTarget extends JavaLibTarget {
 
     File getGenPath(String... paths) {
         return rootProject.file(Paths.get(genDir, paths).toFile())
+    }
+
+    RuleType getRuleType() {
+        if (isKotlin) {
+            return RuleType.KOTLIN_ANDROID_LIBRARY
+        } else {
+            return RuleType.ANDROID_LIBRARY
+        }
+    }
+
+    RuleType getTestRuleType() {
+        if (isKotlin) {
+            return RuleType.KOTLIN_ROBOLECTRIC_TEST
+        } else {
+            return RuleType.ROBOLECTRIC_TEST
+        }
+    }
+
+    Set<File> getSources(BaseVariant variant) {
+        Set<File> srcs = new HashSet<>()
+        srcs.addAll(variant.sourceSets.collect { SourceProvider provider ->
+            provider.javaDirectories
+        }.flatten() as Set<File>)
+
+        if (isKotlin) {
+            srcs += srcs.findAll {
+                it.name == "java"
+            }.collect {
+                new File(it.absolutePath.replaceFirst("/java\$", "/kotlin"))
+            }
+        }
+        return srcs
     }
 
     private static class EmptyLogger implements ILogger {
