@@ -1,0 +1,10 @@
+android_resource(
+    name = 'res_debug',
+    package = 'com.example',
+    resource_union = True,
+    deps = [
+    ],
+    visibility = [
+        'PUBLIC',
+    ],
+)
