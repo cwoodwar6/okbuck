@@ -35,7 +35,7 @@ import static com.uber.okbuck.core.util.KotlinUtil.KOTLIN_ANDROID_EXTENSIONS_MOD
 abstract class AndroidTarget extends JavaLibTarget {
 
     private static final EmptyLogger EMPTY_LOGGER = new EmptyLogger()
-    private static final Set<String> ANDROID_APT_CONFIGS = ["apt", "annotationProcessor"]
+    private static final Set<String> ANDROID_APT_CONFIGS = ["apt", "annotationProcessor", "kapt"]
     private static final Set<String> ANDROID_PROVIDED_CONFIGS = ["provided"]
 
     final String applicationId
@@ -319,7 +319,7 @@ abstract class AndroidTarget extends JavaLibTarget {
         if (baseVariant != null && baseVariant.javaCompiler instanceof JavaCompile) {
             List<String> options = ((JavaCompile) baseVariant.javaCompiler).options.compilerArgs
             // Remove options added by apt plugin since they are handled by apt scope separately
-            filterOptions(options, ["-s", "-processorpath"])
+            filterOptions(options, ["-s", "-processorpath", "-proc:none"])
             return options
         } else {
             return []
@@ -330,7 +330,9 @@ abstract class AndroidTarget extends JavaLibTarget {
         remove.each { String key ->
             int index = options.indexOf(key)
             if (index != -1) {
-                options.remove(index + 1)
+                if (options.size() > 1) {
+                    options.remove(index + 1)
+                }
                 options.remove(index)
             }
         }
